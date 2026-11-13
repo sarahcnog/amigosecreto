@@ -46,12 +46,14 @@ li small{display:block;color:var(--mut)}
   <h1 class="center">🎁 <span id="rvEvt">Amigo Secreto</span></h1>
   <div class="card center">
     <p id="rvHi" style="font-size:1.1rem"></p>
+    <p class="note">Para fins de auditoria, o acesso a este link registra data, horário, endereço IP e informações do navegador/dispositivo.</p>
     <button id="rvBtn" type="button" class="full">Revelar meu amigo secreto</button>
     <div id="rvOut" class="hide">
       <p class="note">Você tirou:</p>
       <div class="big" id="rvName"></div>
       <p class="note">🤫 Segredo! Não conte para ninguém.</p>
     </div>
+    <p class="note">Ao abrir este link e revelar o resultado, o sistema registra data e hora, IP e informações do navegador para controle do sorteio.</p>
     <p class="err" id="rvErr"></p>
   </div>
 </section>
@@ -80,6 +82,7 @@ li small{display:block;color:var(--mut)}
       <p class="err" id="err" role="alert"></p>
       <ul id="lista"></ul>
       <p class="note" id="cnt"></p>
+      <p class="note">Aviso: ao abrir o link individual, o sistema registra data, horário, endereço IP e informações do navegador/dispositivo para auditoria do sorteio.</p>
     </div>
 
     <div class="card">
@@ -92,7 +95,14 @@ li small{display:block;color:var(--mut)}
       <div class="row" style="margin-top:10px"><button class="sec" id="resetTpl" type="button">Restaurar modelo padrão</button></div>
       <label for="base">Link deste site (que será enviado aos participantes)</label>
       <input id="base" inputmode="url" autocomplete="off">
-      <p class="note">Para que a família consiga abrir o link, compartilhe o site com link público (botão Compartilhar do Claude) e cole esse link aqui, se for diferente do exibido.</p>
+      <p class="note">Use o endereço público do GitHub Pages. Ele será usado para montar os links individuais e o link privado da auditoria.</p>
+    </div>
+
+    <div class="card">
+      <h2>4. Segurança do organizador</h2>
+      <label for="adminCode">Código privado para autorizar o sorteio</label>
+      <input id="adminCode" type="password" autocomplete="off" placeholder="Digite seu código privado" maxlength="120">
+      <p class="note">Esse código autoriza a criação do sorteio. Ele não é salvo no navegador e deve ser igual ao secret DRAW_ADMIN_SECRET configurado no Supabase.</p>
     </div>
 
     <button class="full" id="sortear" type="button" disabled>🎲 Sortear amigo secreto</button>
@@ -101,61 +111,41 @@ li small{display:block;color:var(--mut)}
   <section id="result" class="hide">
     <div class="card">
       <h2>Sorteio feito! Envie a cada pessoa</h2>
-      <p class="note">Cada botão abre o WhatsApp com a mensagem pronta e o link pessoal daquela pessoa. Ninguém vê o resultado dos outros, nem você: o sorteado só aparece quando a pessoa abre o próprio link.</p>
+      <p class="note">Copie a mensagem individual e envie pelo WhatsApp. Os resultados e os acessos ficam registrados na auditoria privada do organizador.</p>
+      <p class="note" id="auditStatus">Sorteio salvo. Os acessos serão registrados automaticamente.</p>
+      <p class="note" id="auditLinkWrap"></p>
       <ul id="envios"></ul>
     </div>
     <div class="row">
       <button class="sec" id="voltar" type="button">← Editar participantes</button>
       <button class="sec" id="refazer" type="button">Sortear de novo</button>
     </div>
-    <p class="note">Se você também participa, envie o seu link para o seu próprio número e abra só ele. Se sortear de novo, os links anteriores deixam de valer: reenvie a todos.</p>
+    <p class="note">Se você também participa, envie seu próprio link para seu número. Se criar outro sorteio, os links anteriores continuarão ativos; avise todos para usarem somente os links mais recentes.</p>
   </section>
 </div>
 </main>
 
 <script>
 (function(){
+  // Configure estes dois valores depois de criar o projeto no Supabase.
+  var SUPABASE_URL='https://zzcmwrfshkxvxzpunmws.supabase.co';
+  var SUPABASE_ANON_KEY='sb_publishable_z2mmrhK8vEqJ8daIfcPO1Q_Mkq7aDE6';
+  var API_URL=SUPABASE_URL.replace(/\/$/,'')+'/functions/v1/amigo-secreto';
   var KEY='amigo-secreto-v2';
-  var DEFAULT_BASE='https://claude.ai/artifact/QEcuzsVaRwpTyzS3nNJSPy';
   var DEF_TPL='🎁 *{evento}*\n\nOlá, {nome}! O sorteio do amigo secreto foi feito. 🤫\n\nPara descobrir quem você tirou, abra o link abaixo e toque em “Revelar”:\n{link}\n\n{info}\n\nNão conte para ninguém!';
-  var SECRET='amigo-secreto-familia::v2';
   var people=[],draw=null,sent={};
   var $=function(id){return document.getElementById(id)};
   function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e}
 
-  var here=location.href.split('#')[0];
-  var own=/^https?:/.test(here)&&!/claude/i.test(here);
-  $('tpl').value=DEF_TPL;$('base').value=own?here:DEFAULT_BASE;
+  function normalizeSiteUrl(value){return String(value||'').trim().split('#')[0].replace(/\/index\.html?$/i,'').replace(/\/$/,'')}
+  var here=normalizeSiteUrl(location.href);
+  $('tpl').value=DEF_TPL;$('base').value=/^https?:\/\//i.test(here)?here:'';
   try{
     var s=JSON.parse(localStorage.getItem(KEY)||'null');
     if(s){people=s.people||[];$('evt').value=s.evt||'';$('info').value=s.info||'';if(s.tpl)$('tpl').value=s.tpl;if(s.base)$('base').value=s.base}
   }catch(e){}
   function save(){
     try{localStorage.setItem(KEY,JSON.stringify({people:people,evt:$('evt').value,info:$('info').value,tpl:$('tpl').value,base:$('base').value}))}catch(e){}
-  }
-
-  /* ---------- cripto: o link leva o resultado cifrado ---------- */
-  var enc8=new TextEncoder(),dec8=new TextDecoder();
-  function getKey(){
-    return crypto.subtle.digest('SHA-256',enc8.encode(SECRET)).then(function(h){
-      return crypto.subtle.importKey('raw',h,'AES-GCM',false,['encrypt','decrypt']);
-    });
-  }
-  function toHex(u){var o='';for(var i=0;i<u.length;i++)o+=('0'+u[i].toString(16)).slice(-2);return o}
-  function fromHex(h){var u=new Uint8Array(h.length/2);for(var i=0;i<u.length;i++)u[i]=parseInt(h.substr(i*2,2),16);return u}
-  function encrypt(txt){
-    return getKey().then(function(k){
-      var iv=crypto.getRandomValues(new Uint8Array(12));
-      return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},k,enc8.encode(txt)).then(function(ct){
-        var c=new Uint8Array(ct),all=new Uint8Array(12+c.length);all.set(iv);all.set(c,12);return toHex(all);
-      });
-    });
-  }
-  function decrypt(hex){
-    return getKey().then(function(k){
-      var all=fromHex(hex);
-      return crypto.subtle.decrypt({name:'AES-GCM',iv:all.slice(0,12)},k,all.slice(12));
-    }).then(function(b){return JSON.parse(dec8.decode(b))});
   }
 
   /* ---------- utilidades ---------- */
@@ -212,23 +202,22 @@ li small{display:block;color:var(--mut)}
   ['evt','info','tpl','base'].forEach(function(id){$(id).addEventListener('input',function(){save();renderPrev()})});
   $('resetTpl').onclick=function(){$('tpl').value=DEF_TPL;save();renderPrev()};
 
-  /* ---------- sorteio ---------- */
-  // Embaralha e liga cada pessoa à próxima numa roda única: ninguém tira a si mesmo,
-  // ninguém é sorteado duas vezes e não há trocas diretas (A tira B e B tira A).
-  function sortear(){
-    var a=people.slice();
-    for(var i=a.length-1;i>0;i--){
-      var r=new Uint32Array(1);crypto.getRandomValues(r);
-      var j=r[0]%(i+1),t=a[i];a[i]=a[j];a[j]=t;
+  function apiRequest(payload){
+    if(SUPABASE_URL.indexOf('https://')!==0 || SUPABASE_ANON_KEY.indexOf('COLE_')===0){
+      return Promise.reject(new Error('Configure a URL e a chave pública do Supabase no arquivo index.html.'));
     }
-    return a.map(function(p,i){return {de:p,para:a[(i+1)%a.length]}});
+    return fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY},
+      body:JSON.stringify(payload)
+    }).then(function(r){
+      return r.json().catch(function(){return {} }).then(function(data){
+        if(!r.ok)throw new Error(data.error||'Falha na comunicação com o servidor.');
+        return data;
+      });
+    });
   }
-  function makeLinks(d){
-    var base=($('base').value.trim()||DEFAULT_BASE).split('#')[0];
-    return Promise.all(d.map(function(x){
-      return encrypt(JSON.stringify([evento(),x.de.nome,x.para.nome])).then(function(h){x.link=base+'#r'+h});
-    }));
-  }
+
   function copyText(text){
     function fallbackCopy(){
       return new Promise(function(resolve,reject){
@@ -290,10 +279,34 @@ li small{display:block;color:var(--mut)}
   }
   function show(r){$('setup').classList.toggle('hide',r);$('result').classList.toggle('hide',!r);window.scrollTo(0,0)}
   function run(){
-    var d=sortear();
-    return makeLinks(d).then(function(){draw=d;sent={};renderEnvios();show(true)});
+    if(!/^https?:\/\//i.test(normalizeSiteUrl($('base').value||location.href))){return Promise.reject(new Error('Informe o endereço público do GitHub Pages.'))}
+    if(!$('adminCode').value.trim()){return Promise.reject(new Error('Informe seu código privado de organizador.'))}
+    $('sortear').disabled=true;
+    $('sortear').textContent='Registrando sorteio...';
+    return apiRequest({
+      action:'create_draw',
+      admin_code:$('adminCode').value,
+      event:evento(),
+      info:$('info').value.trim(),
+      site_url:normalizeSiteUrl($('base').value||location.href),
+      participants:people.map(function(p){return {name:p.nome,phone:p.tel}})
+    }).then(function(data){
+      draw=data.participants.map(function(p){return {de:{nome:p.name,tel:p.phone},link:p.link}});
+      window.__auditUrl=data.audit_url;
+      sent={};
+      renderEnvios();
+      $('auditStatus').textContent='Sorteio salvo. Os acessos serão registrados automaticamente.';
+      $('auditLinkWrap').textContent='';
+      var auditAnchor=el('a','', 'Abrir painel privado com resultados e acessos');
+      auditAnchor.href=data.audit_url;auditAnchor.target='_blank';auditAnchor.rel='noopener';
+      $('auditLinkWrap').appendChild(auditAnchor);
+      show(true);
+    }).finally(function(){
+      $('sortear').disabled=people.length<3;
+      $('sortear').textContent='🎲 Sortear amigo secreto';
+    });
   }
-  $('sortear').onclick=function(){run().catch(function(){$('err').textContent='Não foi possível gerar os links neste navegador.'})};
+  $('sortear').onclick=function(){run().catch(function(e){$('err').textContent=e.message||'Não foi possível registrar o sorteio.'})};
   $('voltar').onclick=function(){draw=null;show(false)};
   var armed=false;
   $('refazer').onclick=function(){
@@ -303,20 +316,28 @@ li small{display:block;color:var(--mut)}
   };
 
   /* ---------- tela de quem recebe o link ---------- */
-  var m=location.hash.match(/^#r([0-9a-f]{40,})$/);
   function route(){
-    var mm=location.hash.match(/^#r([0-9a-f]{40,})$/);
+    var mm=location.hash.match(/^#r([A-Za-z0-9_-]{24,})$/);
     $('reveal').classList.toggle('hide',!mm);
     $('org').classList.toggle('hide',!!mm);
     if(!mm)return;
     $('rvOut').classList.add('hide');$('rvBtn').classList.remove('hide');$('rvErr').textContent='';
-    decrypt(mm[1]).then(function(v){
-      $('rvEvt').textContent=v[0];
-      $('rvHi').textContent='Olá, '+v[1]+'! Seu sorteio está pronto.';
-      $('rvBtn').onclick=function(){$('rvName').textContent=v[2];$('rvOut').classList.remove('hide');$('rvBtn').classList.add('hide')};
+    $('rvHi').textContent='Validando seu link...';
+    apiRequest({action:'open_link',token:mm[1]}).then(function(v){
+      $('rvEvt').textContent=v.event;
+      $('rvHi').textContent='Olá, '+v.name+'! Seu sorteio está pronto.';
+      $('rvBtn').onclick=function(){
+        apiRequest({action:'reveal',token:mm[1]}).then(function(result){
+          $('rvName').textContent=result.assigned_name;
+          $('rvOut').classList.remove('hide');
+          $('rvBtn').classList.add('hide');
+        }).catch(function(){
+          $('rvErr').textContent='Não foi possível registrar a revelação. Tente novamente.';
+        });
+      };
     }).catch(function(){
       $('rvHi').textContent='';$('rvBtn').classList.add('hide');
-      $('rvErr').textContent='Link inválido ou incompleto. Peça para quem organizou reenviar a mensagem.';
+      $('rvErr').textContent='Link inválido ou indisponível. Peça para quem organizou reenviar a mensagem.';
     });
   }
   window.addEventListener('hashchange',route);
