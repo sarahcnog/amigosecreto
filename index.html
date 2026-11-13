@@ -229,17 +229,63 @@ li small{display:block;color:var(--mut)}
       return encrypt(JSON.stringify([evento(),x.de.nome,x.para.nome])).then(function(h){x.link=base+'#r'+h});
     }));
   }
+  function copyText(text){
+    function fallbackCopy(){
+      return new Promise(function(resolve,reject){
+        var field=document.createElement('textarea');
+        field.value=text;
+        field.setAttribute('readonly','');
+        field.style.position='fixed';
+        field.style.left='0';
+        field.style.top='0';
+        field.style.width='1px';
+        field.style.height='1px';
+        field.style.padding='0';
+        field.style.border='0';
+        field.style.opacity='0.01';
+        document.body.appendChild(field);
+        field.focus();
+        field.select();
+        field.setSelectionRange(0,field.value.length);
+        var ok=false;
+        try{ok=document.execCommand('copy')}catch(e){}
+        document.body.removeChild(field);
+        if(ok){resolve();return}
+        // Alguns ambientes incorporados bloqueiam a área de transferência.
+        // Nesse caso, abre o texto selecionável para cópia manual.
+        window.prompt('A cópia automática não está disponível neste navegador. Copie a mensagem abaixo:',text);
+        resolve('manual');
+      });
+    }
+    if(navigator.clipboard&&window.isSecureContext){
+      return navigator.clipboard.writeText(text).catch(fallbackCopy);
+    }
+    return fallbackCopy();
+  }
   function renderEnvios(){
     var ul=$('envios');ul.textContent='';
     draw.forEach(function(x){
       var li=el('li',sent[x.de.tel]?'sent':'');
       var d=el('div');d.appendChild(el('strong','',x.de.nome));d.appendChild(el('small','',fmt(x.de.tel)));
-      var a=el('a','btn',sent[x.de.tel]?'✓ Enviado':'Enviar no WhatsApp');
+      var b=el('button','',sent[x.de.tel]?'✓ Mensagem copiada':'Copiar mensagem');
+      b.type='button';
       var m=build({nome:x.de.nome,evento:evento(),info:$('info').value.trim(),link:x.link});
-      a.href='https://wa.me/'+x.de.tel+'?text='+encodeURIComponent(m);
-      a.target='_blank';a.rel='noopener';
-      a.onclick=function(){sent[x.de.tel]=true;setTimeout(renderEnvios,300)};
-      li.appendChild(d);li.appendChild(a);ul.appendChild(li);
+      b.onclick=function(){
+        b.disabled=true;
+        copyText(m).then(function(result){
+          if(result==='manual'){
+            b.disabled=false;
+            b.textContent='Copie o texto exibido';
+            return;
+          }
+          sent[x.de.tel]=true;
+          renderEnvios();
+        }).catch(function(){
+          b.disabled=false;
+          b.textContent='Tente copiar novamente';
+        });
+      };
+      li.appendChild(d);li.appendChild(b);ul.appendChild(li);
     });
   }
   function show(r){$('setup').classList.toggle('hide',r);$('result').classList.toggle('hide',!r);window.scrollTo(0,0)}
