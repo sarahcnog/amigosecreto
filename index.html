@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Amigo Secreto da Família</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#fbf5ee;--card:#ffffff;--tx:#2b2220;--mut:#7a6a64;--ac:#c0392b;--acx:#ffffff;--bd:#eadfd6;--ok:#2e7d32;color-scheme:light}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1615;--card:#272020;--tx:#f3e9e4;--mut:#b3a39c;--ac:#e0584a;--acx:#1b1615;--bd:#3a302e;--ok:#6fcf74;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1b1615;--card:#272020;--tx:#f3e9e4;--mut:#b3a39c;--ac:#e0584a;--acx:#1b1615;--bd:#3a302e;--ok:#6fcf74;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:600px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.6rem;margin:8px 0 4px}
+p.sub{color:var(--mut);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px}
+h2{font-size:1.05rem;margin:0 0 10px}
+label{display:block;font-size:.85rem;color:var(--mut);margin:10px 0 4px}
+input,textarea{width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);font:inherit}
+textarea{resize:vertical;line-height:1.45}
+input:focus,textarea:focus{outline:2px solid var(--ac);outline-offset:1px}
+button,a.btn{display:inline-block;border:0;border-radius:10px;padding:11px 16px;font:inherit;font-weight:600;cursor:pointer;background:var(--ac);color:var(--acx);text-decoration:none;text-align:center}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.full{width:100%;margin-top:12px}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--bd)}
+li:first-child{border-top:0}
+li small{display:block;color:var(--mut)}
+.x{background:none;color:var(--mut);padding:6px 10px;font-size:1.1rem}
+.err{color:var(--ac);font-size:.9rem;min-height:1.3em;margin:8px 0 0}
+.sent a.btn{background:transparent;color:var(--ok);border:1px solid var(--ok)}
+.note{font-size:.85rem;color:var(--mut);margin:6px 0 0}
+.hide{display:none}
+.prev{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px dashed var(--bd);border-radius:10px;padding:12px;font-size:.92rem;max-height:260px;overflow:auto}
+.big{font-size:2rem;font-weight:800;color:var(--ac);margin:8px 0;word-break:break-word}
+.center{text-align:center}
+</style>
+</head>
+<body>
+<main>
+<section id="reveal" class="hide">
+  <h1 class="center">🎁 <span id="rvEvt">Amigo Secreto</span></h1>
+  <div class="card center">
+    <p id="rvHi" style="font-size:1.1rem"></p>
+    <button id="rvBtn" type="button" class="full">Revelar meu amigo secreto</button>
+    <div id="rvOut" class="hide">
+      <p class="note">Você tirou:</p>
+      <div class="big" id="rvName"></div>
+      <p class="note">🤫 Segredo! Não conte para ninguém.</p>
+    </div>
+    <p class="err" id="rvErr"></p>
+  </div>
+</section>
+
+<div id="org">
+  <h1>🎁 Amigo Secreto da Família</h1>
+  <p class="sub">Cadastre os participantes, sorteie e envie a cada um, pelo WhatsApp, um link pessoal para descobrir quem tirou. Sem conta, sem cadastro.</p>
+
+  <section id="setup">
+    <div class="card">
+      <h2>1. Sobre o evento</h2>
+      <label for="evt">Nome do evento</label>
+      <input id="evt" placeholder="Natal da Família 2026" maxlength="60">
+      <label for="info">Informações extras (valor, data, local, regras, dicas de presente…)</label>
+      <textarea id="info" rows="6" maxlength="800" placeholder="Valor sugerido: R$ 50&#10;Troca de presentes: 25/12, às 20h, na casa da vovó&#10;Presente dentro do valor, com cartão com o nome de quem recebe."></textarea>
+      <p class="note">Aparece na mensagem enviada a cada participante.</p>
+    </div>
+
+    <div class="card">
+      <h2>2. Participantes</h2>
+      <label for="nome">Nome</label>
+      <input id="nome" placeholder="Maria" maxlength="40" autocomplete="off">
+      <label for="tel">WhatsApp (com DDD)</label>
+      <input id="tel" type="tel" inputmode="tel" placeholder="(82) 99999-9999" autocomplete="off">
+      <button class="full" id="add" type="button">Adicionar participante</button>
+      <p class="err" id="err" role="alert"></p>
+      <ul id="lista"></ul>
+      <p class="note" id="cnt"></p>
+    </div>
+
+    <div class="card">
+      <h2>3. Mensagem enviada no WhatsApp</h2>
+      <label for="tpl">Texto da mensagem</label>
+      <textarea id="tpl" rows="10" maxlength="1200"></textarea>
+      <p class="note">Use <b>{nome}</b> (quem recebe), <b>{evento}</b>, <b>{info}</b> (informações extras) e <b>{link}</b> (link pessoal para ver quem tirou). Se esquecer o {link}, ele é adicionado no final. O nome do sorteado nunca vai escrito na mensagem.</p>
+      <label>Pré-visualização</label>
+      <div class="prev" id="prev"></div>
+      <div class="row" style="margin-top:10px"><button class="sec" id="resetTpl" type="button">Restaurar modelo padrão</button></div>
+      <label for="base">Link deste site (que será enviado aos participantes)</label>
+      <input id="base" inputmode="url" autocomplete="off">
+      <p class="note">Para que a família consiga abrir o link, compartilhe o site com link público (botão Compartilhar do Claude) e cole esse link aqui, se for diferente do exibido.</p>
+    </div>
+
+    <button class="full" id="sortear" type="button" disabled>🎲 Sortear amigo secreto</button>
+  </section>
+
+  <section id="result" class="hide">
+    <div class="card">
+      <h2>Sorteio feito! Envie a cada pessoa</h2>
+      <p class="note">Cada botão abre o WhatsApp com a mensagem pronta e o link pessoal daquela pessoa. Ninguém vê o resultado dos outros, nem você: o sorteado só aparece quando a pessoa abre o próprio link.</p>
+      <ul id="envios"></ul>
+    </div>
+    <div class="row">
+      <button class="sec" id="voltar" type="button">← Editar participantes</button>
+      <button class="sec" id="refazer" type="button">Sortear de novo</button>
+    </div>
+    <p class="note">Se você também participa, envie o seu link para o seu próprio número e abra só ele. Se sortear de novo, os links anteriores deixam de valer: reenvie a todos.</p>
+  </section>
+</div>
+</main>
+
+<script>
+(function(){
+  var KEY='amigo-secreto-v2';
+  var DEFAULT_BASE='https://claude.ai/artifact/QEcuzsVaRwpTyzS3nNJSPy';
+  var DEF_TPL='🎁 *{evento}*\n\nOlá, {nome}! O sorteio do amigo secreto foi feito. 🤫\n\nPara descobrir quem você tirou, abra o link abaixo e toque em “Revelar”:\n{link}\n\n{info}\n\nNão conte para ninguém!';
+  var SECRET='amigo-secreto-familia::v2';
+  var people=[],draw=null,sent={};
+  var $=function(id){return document.getElementById(id)};
+  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e}
+
+  var here=location.href.split('#')[0];
+  var own=/^https?:/.test(here)&&!/claude/i.test(here);
+  $('tpl').value=DEF_TPL;$('base').value=own?here:DEFAULT_BASE;
+  try{
+    var s=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(s){people=s.people||[];$('evt').value=s.evt||'';$('info').value=s.info||'';if(s.tpl)$('tpl').value=s.tpl;if(s.base)$('base').value=s.base}
+  }catch(e){}
+  function save(){
+    try{localStorage.setItem(KEY,JSON.stringify({people:people,evt:$('evt').value,info:$('info').value,tpl:$('tpl').value,base:$('base').value}))}catch(e){}
+  }
+
+  /* ---------- cripto: o link leva o resultado cifrado ---------- */
+  var enc8=new TextEncoder(),dec8=new TextDecoder();
+  function getKey(){
+    return crypto.subtle.digest('SHA-256',enc8.encode(SECRET)).then(function(h){
+      return crypto.subtle.importKey('raw',h,'AES-GCM',false,['encrypt','decrypt']);
+    });
+  }
+  function toHex(u){var o='';for(var i=0;i<u.length;i++)o+=('0'+u[i].toString(16)).slice(-2);return o}
+  function fromHex(h){var u=new Uint8Array(h.length/2);for(var i=0;i<u.length;i++)u[i]=parseInt(h.substr(i*2,2),16);return u}
+  function encrypt(txt){
+    return getKey().then(function(k){
+      var iv=crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},k,enc8.encode(txt)).then(function(ct){
+        var c=new Uint8Array(ct),all=new Uint8Array(12+c.length);all.set(iv);all.set(c,12);return toHex(all);
+      });
+    });
+  }
+  function decrypt(hex){
+    return getKey().then(function(k){
+      var all=fromHex(hex);
+      return crypto.subtle.decrypt({name:'AES-GCM',iv:all.slice(0,12)},k,all.slice(12));
+    }).then(function(b){return JSON.parse(dec8.decode(b))});
+  }
+
+  /* ---------- utilidades ---------- */
+  function normPhone(v){
+    var d=String(v).replace(/\D/g,'');
+    if(d.indexOf('55')===0&&(d.length===12||d.length===13))return d;
+    if(d.length===10||d.length===11)return '55'+d;
+    return null;
+  }
+  function fmt(p){var d=p.slice(2);return '('+d.slice(0,2)+') '+d.slice(2,d.length-4)+'-'+d.slice(-4)}
+  function evento(){return $('evt').value.trim()||'Amigo Secreto da Família'}
+  function build(v){
+    var t=$('tpl').value;
+    if(t.indexOf('{link}')<0)t+='\n\n{link}';
+    t=t.replace(/\{nome\}/g,function(){return v.nome})
+       .replace(/\{evento\}/g,function(){return v.evento})
+       .replace(/\{info\}/g,function(){return v.info})
+       .replace(/\{link\}/g,function(){return v.link});
+    return t.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  }
+  function renderPrev(){
+    var nome=people.length?people[0].nome:'Maria';
+    $('prev').textContent=build({nome:nome,evento:evento(),info:$('info').value.trim(),link:'https://…/#r3f9a…  (link pessoal de '+nome+')'});
+  }
+
+  /* ---------- participantes ---------- */
+  function renderList(){
+    var ul=$('lista');ul.textContent='';
+    people.forEach(function(p,i){
+      var li=el('li');
+      var d=el('div');d.appendChild(el('strong','',p.nome));d.appendChild(el('small','',fmt(p.tel)));
+      var b=el('button','x','✕');b.type='button';b.setAttribute('aria-label','Remover '+p.nome);
+      b.onclick=function(){people.splice(i,1);save();renderList();renderPrev()};
+      li.appendChild(d);li.appendChild(b);ul.appendChild(li);
+    });
+    var n=people.length;
+    $('cnt').textContent=n+(n===1?' participante':' participantes')+(n<3?' · mínimo de 3 para sortear':'');
+    $('sortear').disabled=n<3;
+  }
+  function add(){
+    var nome=$('nome').value.trim().replace(/\s+/g,' ');
+    var tel=normPhone($('tel').value);
+    var err=$('err');err.textContent='';
+    if(!nome){err.textContent='Informe o nome.';return}
+    if(!tel){err.textContent='WhatsApp inválido. Use DDD + número, ex.: (82) 99999-9999.';return}
+    if(people.some(function(p){return p.nome.toLowerCase()===nome.toLowerCase()})){err.textContent='Já existe alguém com esse nome. Diferencie (ex.: “Ana S.”).';return}
+    if(people.some(function(p){return p.tel===tel})){err.textContent='Esse WhatsApp já foi cadastrado.';return}
+    people.push({nome:nome,tel:tel});save();renderList();renderPrev();
+    $('nome').value='';$('tel').value='';$('nome').focus();
+  }
+  $('add').onclick=add;
+  $('tel').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();add()}});
+  $('nome').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('tel').focus()}});
+  ['evt','info','tpl','base'].forEach(function(id){$(id).addEventListener('input',function(){save();renderPrev()})});
+  $('resetTpl').onclick=function(){$('tpl').value=DEF_TPL;save();renderPrev()};
+
+  /* ---------- sorteio ---------- */
+  // Embaralha e liga cada pessoa à próxima numa roda única: ninguém tira a si mesmo,
+  // ninguém é sorteado duas vezes e não há trocas diretas (A tira B e B tira A).
+  function sortear(){
+    var a=people.slice();
+    for(var i=a.length-1;i>0;i--){
+      var r=new Uint32Array(1);crypto.getRandomValues(r);
+      var j=r[0]%(i+1),t=a[i];a[i]=a[j];a[j]=t;
+    }
+    return a.map(function(p,i){return {de:p,para:a[(i+1)%a.length]}});
+  }
+  function makeLinks(d){
+    var base=($('base').value.trim()||DEFAULT_BASE).split('#')[0];
+    return Promise.all(d.map(function(x){
+      return encrypt(JSON.stringify([evento(),x.de.nome,x.para.nome])).then(function(h){x.link=base+'#r'+h});
+    }));
+  }
+  function renderEnvios(){
+    var ul=$('envios');ul.textContent='';
+    draw.forEach(function(x){
+      var li=el('li',sent[x.de.tel]?'sent':'');
+      var d=el('div');d.appendChild(el('strong','',x.de.nome));d.appendChild(el('small','',fmt(x.de.tel)));
+      var a=el('a','btn',sent[x.de.tel]?'✓ Enviado':'Enviar no WhatsApp');
+      var m=build({nome:x.de.nome,evento:evento(),info:$('info').value.trim(),link:x.link});
+      a.href='https://wa.me/'+x.de.tel+'?text='+encodeURIComponent(m);
+      a.target='_blank';a.rel='noopener';
+      a.onclick=function(){sent[x.de.tel]=true;setTimeout(renderEnvios,300)};
+      li.appendChild(d);li.appendChild(a);ul.appendChild(li);
+    });
+  }
+  function show(r){$('setup').classList.toggle('hide',r);$('result').classList.toggle('hide',!r);window.scrollTo(0,0)}
+  function run(){
+    var d=sortear();
+    return makeLinks(d).then(function(){draw=d;sent={};renderEnvios();show(true)});
+  }
+  $('sortear').onclick=function(){run().catch(function(){$('err').textContent='Não foi possível gerar os links neste navegador.'})};
+  $('voltar').onclick=function(){draw=null;show(false)};
+  var armed=false;
+  $('refazer').onclick=function(){
+    var b=$('refazer');
+    if(!armed){armed=true;b.textContent='Confirmar novo sorteio';setTimeout(function(){armed=false;b.textContent='Sortear de novo'},4000);return}
+    armed=false;b.textContent='Sortear de novo';run();
+  };
+
+  /* ---------- tela de quem recebe o link ---------- */
+  var m=location.hash.match(/^#r([0-9a-f]{40,})$/);
+  function route(){
+    var mm=location.hash.match(/^#r([0-9a-f]{40,})$/);
+    $('reveal').classList.toggle('hide',!mm);
+    $('org').classList.toggle('hide',!!mm);
+    if(!mm)return;
+    $('rvOut').classList.add('hide');$('rvBtn').classList.remove('hide');$('rvErr').textContent='';
+    decrypt(mm[1]).then(function(v){
+      $('rvEvt').textContent=v[0];
+      $('rvHi').textContent='Olá, '+v[1]+'! Seu sorteio está pronto.';
+      $('rvBtn').onclick=function(){$('rvName').textContent=v[2];$('rvOut').classList.remove('hide');$('rvBtn').classList.add('hide')};
+    }).catch(function(){
+      $('rvHi').textContent='';$('rvBtn').classList.add('hide');
+      $('rvErr').textContent='Link inválido ou incompleto. Peça para quem organizou reenviar a mensagem.';
+    });
+  }
+  window.addEventListener('hashchange',route);
+  renderList();renderPrev();route();
+})();
+</script>
+</body>
+</html>
