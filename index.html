@@ -38,6 +38,17 @@ li small{display:block;color:var(--mut)}
 .prev{white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px dashed var(--bd);border-radius:10px;padding:12px;font-size:.92rem;max-height:260px;overflow:auto}
 .big{font-size:2rem;font-weight:800;color:var(--ac);margin:8px 0;word-break:break-word}
 .center{text-align:center}
+.history-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.history-item{display:block;border-top:1px solid var(--bd);padding:14px 0}
+.history-item:first-child{border-top:0}
+.history-item strong{display:block}
+.history-meta{color:var(--mut);font-size:.88rem;margin:3px 0 9px}
+.history-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.history-actions button,.history-actions a{font-size:.88rem;padding:8px 11px}
+button.danger{background:transparent;color:#b42318;border:1px solid #b42318}
+.inline-field{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.inline-field input{flex:1;min-width:190px}
+#adminErr{font-weight:700;background:color-mix(in srgb,var(--ac) 9%,var(--card));border:1px solid var(--ac);border-radius:8px;padding:9px 11px}
 </style>
 </head>
 <body>
@@ -59,8 +70,17 @@ li small{display:block;color:var(--mut)}
 </section>
 
 <div id="org">
-  <h1>🎁 Amigo Secreto da Família</h1>
-  <p class="sub">Cadastre os participantes, sorteie e envie a cada um, pelo WhatsApp, um link pessoal para descobrir quem tirou. Sem conta, sem cadastro.</p>
+  <div class="history-head"><div><h1>🎁 Amigo Secreto da Família</h1><p class="sub">Cadastre os participantes, sorteie e envie a cada um, pelo WhatsApp, um link pessoal para descobrir quem tirou. Sem conta, sem cadastro.</p></div><button id="openHistory" class="sec" type="button">Meus sorteios</button></div>
+
+  <section id="historyPanel" class="card hide" aria-labelledby="historyTitle">
+    <h2 id="historyTitle">Meus sorteios</h2>
+    <p class="note">Acesse o histórico usando o mesmo código privado do organizador.</p>
+    <label for="historyCode">Código privado do organizador</label>
+    <input id="historyCode" type="password" autocomplete="off" placeholder="Digite seu código privado" maxlength="120">
+    <button id="loadHistory" class="full" type="button">Consultar sorteios</button>
+    <p id="historyErr" class="err" role="alert"></p>
+    <div id="historyList"></div>
+  </section>
 
   <section id="setup">
     <div class="card">
@@ -103,6 +123,7 @@ li small{display:block;color:var(--mut)}
       <label for="adminCode">Código privado para autorizar o sorteio</label>
       <input id="adminCode" type="password" autocomplete="off" placeholder="Digite seu código privado" maxlength="120">
       <p class="note">Esse código autoriza a criação do sorteio. Ele não é salvo no navegador e deve ser igual ao secret DRAW_ADMIN_SECRET configurado no Supabase.</p>
+      <p class="err hide" id="adminErr" role="alert"></p>
     </div>
 
     <button class="full" id="sortear" type="button" disabled>🎲 Sortear amigo secreto</button>
@@ -306,14 +327,73 @@ li small{display:block;color:var(--mut)}
       $('sortear').textContent='🎲 Sortear amigo secreto';
     });
   }
-  $('sortear').onclick=function(){run().catch(function(e){$('err').textContent=e.message||'Não foi possível registrar o sorteio.'})};
+  function showAdminError(e){$('adminErr').textContent=e.message||'Não foi possível registrar o sorteio.';$('adminErr').classList.remove('hide');$('adminCode').focus()}
+  $('adminCode').addEventListener('input',function(){$('adminErr').textContent='';$('adminErr').classList.add('hide')});
+  $('sortear').onclick=function(){ $('adminErr').textContent='';$('adminErr').classList.add('hide');run().catch(showAdminError)};
   $('voltar').onclick=function(){draw=null;show(false)};
   var armed=false;
   $('refazer').onclick=function(){
     var b=$('refazer');
     if(!armed){armed=true;b.textContent='Confirmar novo sorteio';setTimeout(function(){armed=false;b.textContent='Sortear de novo'},4000);return}
-    armed=false;b.textContent='Sortear de novo';run();
+    armed=false;b.textContent='Sortear de novo';$('adminErr').textContent='';$('adminErr').classList.add('hide');run().catch(showAdminError);
   };
+
+  /* ---------- histórico de sorteios ---------- */
+  function historySiteUrl(){return normalizeSiteUrl(location.origin+location.pathname.replace(/\/index\.html?$/i,''))}
+  function renderHistory(items,adminCode){
+    var host=$('historyList');host.textContent='';
+    if(!items.length){host.appendChild(el('p','note','Nenhum sorteio encontrado.'));return}
+    items.forEach(function(item){
+      var card=el('div','history-item');
+      card.appendChild(el('strong','',item.event_name||'Amigo Secreto'));
+      card.appendChild(el('div','history-meta',new Date(item.created_at).toLocaleString('pt-BR')+' · '+item.participant_count+' participante(s)'));
+      var actions=el('div','history-actions');
+      if(item.audit_url){
+        var a=el('a','btn','Abrir auditoria');a.href=item.audit_url;a.target='_blank';a.rel='noopener';actions.appendChild(a);
+      }else{
+        var oldWrap=el('div');oldWrap.style.width='100%';
+        oldWrap.appendChild(el('p','note','Este sorteio é anterior ao histórico. Cole o link privado de auditoria que você já possui para vinculá-lo.'));
+        var field=el('input');field.type='url';field.placeholder='Cole aqui o link antigo da auditoria';field.setAttribute('aria-label','Link antigo da auditoria');
+        var linkBtn=el('button','sec','Vincular auditoria');linkBtn.type='button';
+        linkBtn.onclick=function(){
+          var match=field.value.trim().match(/[?&]token=([^&#]+)/);
+          if(!match){$('historyErr').textContent='Cole o endereço completo da auditoria, incluindo ?token=...';return}
+          linkBtn.disabled=true;
+          apiRequest({action:'attach_audit_link',admin_code:adminCode,draw_id:item.id,audit_token:decodeURIComponent(match[1]),site_url:historySiteUrl()})
+            .then(function(){return loadHistory()})
+            .catch(function(e){$('historyErr').textContent=e.message||'Não foi possível vincular a auditoria.'})
+            .finally(function(){linkBtn.disabled=false});
+        };
+        var row=el('div','inline-field');row.appendChild(field);row.appendChild(linkBtn);oldWrap.appendChild(row);actions.appendChild(oldWrap);
+      }
+      var del=el('button','danger','Excluir');del.type='button';
+      del.onclick=function(){
+        var confirmed=window.confirm('Excluir permanentemente o sorteio “'+item.event_name+'”? Os participantes, links e registros de acesso desse sorteio também serão apagados. Esta ação não pode ser desfeita.');
+        if(!confirmed)return;
+        del.disabled=true;
+        apiRequest({action:'delete_draw',admin_code:adminCode,draw_id:item.id})
+          .then(function(){return loadHistory()})
+          .catch(function(e){$('historyErr').textContent=e.message||'Não foi possível excluir o sorteio.';del.disabled=false});
+      };
+      actions.appendChild(del);card.appendChild(actions);host.appendChild(card);
+    });
+  }
+  function loadHistory(){
+    var code=$('historyCode').value;
+    $('historyErr').textContent='';
+    if(!code){$('historyErr').textContent='Informe o código privado do organizador.';return Promise.reject(new Error('Código ausente.'))}
+    $('loadHistory').disabled=true;$('loadHistory').textContent='Carregando...';
+    return apiRequest({action:'list_draws',admin_code:code,site_url:historySiteUrl()})
+      .then(function(data){renderHistory(data.draws||[],code)})
+      .catch(function(e){$('historyErr').textContent=e.message||'Não foi possível carregar o histórico.';throw e})
+      .finally(function(){$('loadHistory').disabled=false;$('loadHistory').textContent='Consultar sorteios'});
+  }
+  $('openHistory').onclick=function(){
+    $('historyPanel').classList.toggle('hide');
+    if(!$('historyPanel').classList.contains('hide')){$('historyCode').focus();$('historyPanel').scrollIntoView({behavior:'smooth',block:'start'})}
+  };
+  $('loadHistory').onclick=function(){loadHistory().catch(function(){})};
+  $('historyCode').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();loadHistory().catch(function(){})}});
 
   /* ---------- tela de quem recebe o link ---------- */
   function route(){
