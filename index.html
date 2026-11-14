@@ -89,6 +89,20 @@ button.danger:hover:not(:disabled){background:#fff0ee;box-shadow:none}
 #adminErr{font-weight:650;background:color-mix(in srgb,#c94a4a 9%,var(--card));border:1px solid #c97878;border-radius:10px;padding:10px 12px}
 #setup .card h2{display:flex;align-items:center;gap:10px}
 #setup .card h2::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ac);box-shadow:0 0 0 5px var(--soft);flex:0 0 auto}
+.wizard-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 18px}
+.wizard-progress button{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;padding:10px 4px;background:transparent;color:var(--mut);border:0;border-radius:12px;font-size:.76rem;font-weight:650}
+.wizard-progress button:hover:not(:disabled){background:var(--soft);box-shadow:none}
+.wizard-progress .step-dot{display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--bd);border-radius:50%;background:var(--card);font-size:.82rem}
+.wizard-progress button[aria-current="step"]{color:var(--ac)}
+.wizard-progress button[aria-current="step"] .step-dot{background:var(--ac);border-color:var(--ac);color:var(--acx);box-shadow:0 0 0 4px var(--soft)}
+.wizard-progress button.completed .step-dot{background:var(--soft);border-color:var(--ac);color:var(--ac)}
+.wizard-progress button:disabled{opacity:.42;cursor:not-allowed}
+.wizard-step{min-height:300px}
+.step-kicker{color:var(--ac);font-size:.76rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase;margin:0 0 6px}
+.wizard-nav{display:flex;justify-content:space-between;gap:10px;margin:14px 0 24px}
+.wizard-nav button{min-width:116px}
+.wizard-nav .primary-next{margin-left:auto}
+.step-summary{background:var(--soft);border-radius:12px;padding:12px 14px;margin:14px 0 0;color:var(--mut);font-size:.88rem}
 #sortear{min-height:52px;font-size:1rem;letter-spacing:.005em;border-radius:13px;box-shadow:0 8px 18px color-mix(in srgb,var(--ac) 22%,transparent)}
 #sortear:hover:not(:disabled){box-shadow:0 10px 22px color-mix(in srgb,var(--ac) 28%,transparent)}
 #openHistory{white-space:nowrap;flex:0 0 auto}
@@ -108,6 +122,10 @@ a:not(.btn){color:var(--ac);font-weight:650;text-decoration-thickness:1px;text-u
   #setup .card h2{margin-bottom:12px}
   .history-actions button,.history-actions a{flex:1}
   #result .row>button{flex:1}
+  .wizard-progress{gap:2px}
+  .wizard-progress button{font-size:.68rem;padding:8px 1px}
+  .wizard-nav button{flex:1;min-width:0}
+  .wizard-step{min-height:0}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 </style>
@@ -142,8 +160,15 @@ a:not(.btn){color:var(--ac);font-weight:650;text-decoration-thickness:1px;text-u
   </section>
   <br />
   <section id="setup">
-    <div class="card">
-      <h2>1. Sobre o evento</h2>
+    <nav class="wizard-progress" aria-label="Etapas do sorteio">
+      <button type="button" data-go-step="0" aria-current="step"><span class="step-dot">1</span><span>Evento</span></button>
+      <button type="button" data-go-step="1" disabled><span class="step-dot">2</span><span>Participantes</span></button>
+      <button type="button" data-go-step="2" disabled><span class="step-dot">3</span><span>Mensagem</span></button>
+      <button type="button" data-go-step="3" disabled><span class="step-dot">4</span><span>Sorteio</span></button>
+    </nav>
+    <div class="card wizard-step" data-step="0">
+      <p class="step-kicker">Etapa 1 de 4</p>
+      <h2>Sobre o evento</h2>
       <label for="evt">Nome do evento</label>
       <input id="evt" placeholder="Natal da Família 2026" maxlength="60">
       <label for="info">Informações extras (valor, data, local, regras, dicas de presente…)</label>
@@ -151,8 +176,9 @@ a:not(.btn){color:var(--ac);font-weight:650;text-decoration-thickness:1px;text-u
       <p class="note">Aparece na mensagem enviada a cada participante.</p>
     </div>
 
-    <div class="card">
-      <h2>2. Participantes</h2>
+    <div class="card wizard-step hide" data-step="1">
+      <p class="step-kicker">Etapa 2 de 4</p>
+      <h2>Participantes</h2>
       <label for="nome">Nome</label>
       <input id="nome" placeholder="Maria" maxlength="40" autocomplete="off">
       <label for="tel">WhatsApp (com DDD)</label>
@@ -161,11 +187,11 @@ a:not(.btn){color:var(--ac);font-weight:650;text-decoration-thickness:1px;text-u
       <p class="err" id="err" role="alert"></p>
       <ul id="lista"></ul>
       <p class="note" id="cnt"></p>
-      <p class="note">Aviso: ao abrir o link individual, o sistema registra data, horário, endereço IP e informações do navegador/dispositivo para auditoria do sorteio.</p>
     </div>
 
-    <div class="card">
-      <h2>3. Mensagem enviada no WhatsApp</h2>
+    <div class="card wizard-step hide" data-step="2">
+      <p class="step-kicker">Etapa 3 de 4</p>
+      <h2>Mensagem enviada no WhatsApp</h2>
       <label for="tpl">Texto da mensagem</label>
       <textarea id="tpl" rows="10" maxlength="1200"></textarea>
       <p class="note">Use <b>{nome}</b> (quem recebe), <b>{evento}</b>, <b>{info}</b> (informações extras) e <b>{link}</b> (link pessoal para ver quem tirou). Se esquecer o {link}, ele é adicionado no final. O nome do sorteado nunca vai escrito na mensagem.</p>
@@ -177,15 +203,20 @@ a:not(.btn){color:var(--ac);font-weight:650;text-decoration-thickness:1px;text-u
       <p class="note">Use o endereço público do GitHub Pages. Ele será usado para montar os links individuais e o link privado da auditoria.</p>
     </div>
 
-    <div class="card">
-      <h2>4. Segurança do organizador</h2>
+    <div class="card wizard-step hide" data-step="3">
+      <p class="step-kicker">Etapa 4 de 4</p>
+      <h2>Segurança do organizador</h2>
       <label for="adminCode">Código privado para autorizar o sorteio</label>
       <input id="adminCode" type="password" autocomplete="off" placeholder="Digite seu código privado" maxlength="120">
       <p class="note">Esse código autoriza a criação do sorteio. Ele não é salvo no navegador e deve ser igual ao secret DRAW_ADMIN_SECRET configurado no Supabase.</p>
       <p class="err hide" id="adminErr" role="alert"></p>
+      <div class="step-summary">Antes de sortear, confira se os participantes e as informações do evento estão corretos.</div>
+      <button class="full" id="sortear" type="button" disabled>🎲 Sortear amigo secreto</button>
     </div>
-
-    <button class="full" id="sortear" type="button" disabled>🎲 Sortear amigo secreto</button>
+    <div class="wizard-nav">
+      <button class="sec" id="stepBack" type="button" disabled>← Voltar</button>
+      <button id="stepNext" class="primary-next" type="button">Continuar →</button>
+    </div>
   </section>
 
   <section id="result" class="hide">
@@ -250,6 +281,43 @@ a:not(.btn){color:var(--ac);font-weight:650;text-decoration-thickness:1px;text-u
     var nome=people.length?people[0].nome:'Maria';
     $('prev').textContent=build({nome:nome,evento:evento(),info:$('info').value.trim(),link:'https://…/#r3f9a…  (link pessoal de '+nome+')'});
   }
+
+  /* ---------- fluxo guiado do organizador ---------- */
+  var currentStep=0;
+  var stepNames=['Sobre o evento','Participantes','Mensagem','Segurança do organizador'];
+  function updateWizard(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-step]'),function(card){
+      card.classList.toggle('hide',Number(card.getAttribute('data-step'))!==currentStep);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-go-step]'),function(btn){
+      var index=Number(btn.getAttribute('data-go-step'));
+      btn.setAttribute('aria-current',index===currentStep?'step':'false');
+      btn.classList.toggle('completed',index<currentStep);
+      btn.disabled=index>currentStep;
+    });
+    $('stepBack').disabled=currentStep===0;
+    $('stepNext').classList.toggle('hide',currentStep===3);
+    $('stepNext').textContent=currentStep===2?'Ir para segurança →':'Continuar →';
+    $('setup').setAttribute('aria-label','Etapa '+(currentStep+1)+' de 4: '+stepNames[currentStep]);
+  }
+  function goStep(index){
+    if(index<0||index>3)return;
+    if(index>currentStep&&!validateStep(currentStep))return;
+    currentStep=index;updateWizard();window.scrollTo({top:0,behavior:'smooth'});
+    var first=$('setup').querySelector('[data-step="'+index+'"] input, [data-step="'+index+'"] textarea');
+    if(first&&index!==3)first.focus({preventScroll:true});
+  }
+  function validateStep(index){
+    if(index===1&&people.length<3){$('err').textContent='Adicione pelo menos 3 participantes para continuar.';return false}
+    if(index===2){
+      var url=normalizeSiteUrl($('base').value||location.href);
+      if(!/^https?:\/\//i.test(url)){$('base').focus();$('base').setCustomValidity('Informe o endereço público do GitHub Pages.');$('base').reportValidity();$('base').setCustomValidity('');return false}
+    }
+    return true;
+  }
+  $('stepBack').onclick=function(){goStep(currentStep-1)};
+  $('stepNext').onclick=function(){goStep(currentStep+1)};
+  Array.prototype.forEach.call(document.querySelectorAll('[data-go-step]'),function(btn){btn.onclick=function(){var target=Number(btn.getAttribute('data-go-step'));if(target<=currentStep)goStep(target)}});
 
   /* ---------- participantes ---------- */
   function renderList(){
@@ -389,7 +457,7 @@ a:not(.btn){color:var(--ac);font-weight:650;text-decoration-thickness:1px;text-u
   function showAdminError(e){$('adminErr').textContent=e.message||'Não foi possível registrar o sorteio.';$('adminErr').classList.remove('hide');$('adminCode').focus()}
   $('adminCode').addEventListener('input',function(){$('adminErr').textContent='';$('adminErr').classList.add('hide')});
   $('sortear').onclick=function(){ $('adminErr').textContent='';$('adminErr').classList.add('hide');run().catch(showAdminError)};
-  $('voltar').onclick=function(){draw=null;show(false)};
+  $('voltar').onclick=function(){draw=null;show(false);currentStep=3;updateWizard();window.scrollTo(0,0)};
   var armed=false;
   $('refazer').onclick=function(){
     var b=$('refazer');
@@ -480,7 +548,7 @@ a:not(.btn){color:var(--ac);font-weight:650;text-decoration-thickness:1px;text-u
     });
   }
   window.addEventListener('hashchange',route);
-  renderList();renderPrev();route();
+  renderList();renderPrev();updateWizard();route();
 })();
 </script>
 </body>
